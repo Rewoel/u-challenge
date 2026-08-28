@@ -97,12 +97,17 @@
         <!-- App Header -->
         <header class="text-center mb-6">
             <div class="inline-flex items-center gap-2 bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-xs font-bold mb-2 shadow-sm border border-yellow-200">
-                <i class="fa-solid fa-umbrella-beach"></i> SommerUrlaub 2026
+                <i class="fa-solid fa-umbrella-beach"></i> SommerUrlaub 2026 (bis 06.09.)
             </div>
             <h1 class="text-3xl font-extrabold tracking-tight leading-none mb-1">
                 <span class="text-primary">urlaubsfoto</span>
                 <span class="text-secondary">Challenge</span>
             </h1>
+            <div id="start-date-badge" class="flex items-center justify-center gap-1.5 text-xs text-gray-500 font-semibold mb-1 cursor-pointer hover:text-primary transition-colors" onclick="appState.promptStartDate()" title="Urlaubsbeginn ändern">
+                <i class="fa-regular fa-calendar-alt text-secondary"></i>
+                <span id="start-date-text">Startdatum wird geladen...</span>
+                <i class="fa-solid fa-pencil text-[10px] text-gray-400"></i>
+            </div>
             <p id="user-badge" class="text-xs font-semibold text-gray-500 min-h-[1.25rem]"></p>
         </header>
 
@@ -175,22 +180,17 @@
         const participants = ["Michelle", "Florian", "Felix", "Julian"];
         const familyMembers = ["Mama", "Papa", "Oma", "Opa"];
         
-        // 14 Vacation Daily Photo Challenge Tasks
+        // Selected Vacation Daily Photo Challenge Tasks (Active until Sep 6)
         const tasks = [
-            "Das leckerste Urlaubseis 🍦",
+            "Das leckerste Eis oder kälteste Getränk 🍦",
             "Der lustigste Schatten 👤",
-            "Ein Tier im Urlaub 🦀",
-            "Der schönste Sonnenuntergang 🌅",
-            "Ein lokales Straßenschild / Ortsschild 🛑",
-            "Der höchste Sandburg-Turm / Steinmännchen 🏰",
-            "Ein Spiegelbild im Wasser 💧",
-            "Etwas, das typisch für diesen Ort ist 📍",
-            "Ein lustiges Gesicht aus Dingen gelegt 😜",
-            "Der spektakulärste Sprung ins Wasser 💦",
-            "Das beste Urlaubs-Outfit 🕶️",
-            "Eine versteckte Muschel oder ein besonderer Stein 🐚",
-            "Das bunteste Urlaubs-Getränk 🍹",
-            "Ein lustiges Gruppen-Selfie 📸"
+            "Das farbenfrohste Motiv des Tages 🌈",
+            "Etwas Typisches für dieses Urlaubsland 📍",
+            "Eine kreative optische Täuschung 👁️",
+            "Das schönste Blumen- oder Pflanzenmotiv 🌺",
+            "Ein Foto von leckerem Urlaubsessen 🍽️",
+            "Ein Schnappschuss der lokalen Architektur 🏛️",
+            "Etwas Herzförmiges in der Natur finden 💗"
         ];
 
         window.appState = {
@@ -201,12 +201,83 @@
             selectedTaskIndex: 0, // Default task day index
             photos: [],
             pendingRatings: {},
-            
+
+            getStartDateStr: function() {
+                let saved = localStorage.getItem('vacation_start_date');
+                if (!saved) {
+                    const today = new Date();
+                    saved = today.toISOString().split('T')[0]; // Format YYYY-MM-DD
+                    localStorage.setItem('vacation_start_date', saved);
+                }
+                return saved;
+            },
+
+            promptStartDate: function() {
+                const current = this.getStartDateStr();
+                const newDate = prompt("Wann beginnt/begann euer Urlaub? (Format: YYYY-MM-DD)", current);
+                if (newDate && /^\d{4}-\d{2}-\d{2}$/.test(newDate)) {
+                    localStorage.setItem('vacation_start_date', newDate);
+                    this.updateStartDateBadge();
+                    this.selectedTaskIndex = this.getCurrentDayIndex();
+                    this.renderView(this.currentView);
+                } else if (newDate) {
+                    showAlert("Ungültiges Format", "Bitte gib das Datum im Format YYYY-MM-DD ein (z.B. 2026-08-28).");
+                }
+            },
+
+            updateStartDateBadge: function() {
+                const badgeText = document.getElementById('start-date-text');
+                if (badgeText) {
+                    const start = new Date(this.getStartDateStr());
+                    const formatted = start.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+                    const currentDay = this.getCurrentDayIndex() + 1;
+                    badgeText.innerHTML = `Urlaubsstart: <strong>${formatted}</strong> (Heute: Tag ${currentDay})`;
+                }
+            },
+
+            getCurrentDayIndex: function() {
+                const startStr = this.getStartDateStr();
+                const start = new Date(startStr);
+                start.setHours(0, 0, 0, 0);
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+
+                const diffTime = today - start;
+                const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+                
+                // Return index (0 for Day 1), clamped between 0 and tasks length
+                return Math.max(0, Math.min(diffDays, tasks.length - 1));
+            },
+
+            isTaskLocked: function(taskIndex) {
+                const startStr = this.getStartDateStr();
+                const start = new Date(startStr);
+                start.setHours(0, 0, 0, 0);
+
+                const targetDate = new Date(start);
+                targetDate.setDate(targetDate.getDate() + taskIndex);
+
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+
+                return today < targetDate; // True if future date
+            },
+
+            getTaskReleaseDateStr: function(taskIndex) {
+                const startStr = this.getStartDateStr();
+                const start = new Date(startStr);
+                start.setDate(start.getDate() + taskIndex);
+                return start.toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit' });
+            },
+
             init: async function() {
                 try {
                     app = initializeApp(firebaseConfig);
                     db = getFirestore(app);
                     auth = getAuth(app);
+
+                    // Auto-select today's unlocked task
+                    this.selectedTaskIndex = this.getCurrentDayIndex();
 
                     // Sign in flow (Custom token or Anonymous)
                     const token = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
@@ -258,6 +329,8 @@
                 const savedName = localStorage.getItem('vacation_user_name');
                 const savedType = localStorage.getItem('vacation_user_type');
                 
+                this.updateStartDateBadge();
+
                 if (savedName && savedType) {
                     this.userName = savedName;
                     this.userType = savedType;
@@ -398,7 +471,9 @@
             },
 
             getTodayHTML: function() {
-                const currentTask = tasks[this.selectedTaskIndex];
+                const isLocked = this.isTaskLocked(this.selectedTaskIndex);
+                const currentTask = isLocked ? "🔒 Geheime Tagesaufgabe" : tasks[this.selectedTaskIndex];
+                const releaseDateStr = this.getTaskReleaseDateStr(this.selectedTaskIndex);
                 
                 // Check if user already submitted for this specific task index
                 const mySubmission = this.photos.find(p => p.taskIndex === this.selectedTaskIndex && p.userName === this.userName);
@@ -412,8 +487,11 @@
                                 <i class="fa-solid fa-chevron-left"></i>
                             </button>
                             <div class="text-center">
-                                <span class="text-xs font-extrabold uppercase tracking-wider text-secondary">Tag ${this.selectedTaskIndex + 1} von ${tasks.length}</span>
-                                <p class="text-xs text-gray-500 font-semibold">Tagesaufgabe</p>
+                                <span class="text-xs font-extrabold uppercase tracking-wider text-secondary flex items-center justify-center gap-1">
+                                    Tag ${this.selectedTaskIndex + 1} von ${tasks.length}
+                                    ${isLocked ? '<i class="fa-solid fa-lock text-amber-500"></i>' : '<i class="fa-solid fa-unlock text-emerald-500"></i>'}
+                                </span>
+                                <p class="text-xs text-gray-500 font-semibold">${isLocked ? `Freischaltung: ${releaseDateStr}` : 'Tagesaufgabe'}</p>
                             </div>
                             <button onclick="appState.changeTaskIndex(1)" ${this.selectedTaskIndex === tasks.length - 1 ? 'disabled class="opacity-30 text-gray-400 px-2 py-1"' : 'class="text-primary font-bold px-3 py-1 hover:bg-gray-100 rounded-lg"'}>
                                 <i class="fa-solid fa-chevron-right"></i>
@@ -421,17 +499,33 @@
                         </div>
 
                         <!-- Task Banner -->
-                        <div class="bg-gradient-to-br from-indigo-900 to-indigo-800 text-white p-6 rounded-2xl shadow-lg relative overflow-hidden text-center">
+                        <div class="${isLocked ? 'bg-gradient-to-br from-slate-800 to-gray-900' : 'bg-gradient-to-br from-indigo-900 to-indigo-800'} text-white p-6 rounded-2xl shadow-lg relative overflow-hidden text-center transition-all">
                             <div class="absolute -right-4 -bottom-4 opacity-10 text-white text-8xl pointer-events-none">
-                                <i class="fa-solid fa-camera"></i>
+                                <i class="fa-solid ${isLocked ? 'fa-lock' : 'fa-camera'}"></i>
                             </div>
-                            <span class="bg-amber-400 text-indigo-950 text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-wider mb-2 inline-block">Gemeinsame Aufgabe</span>
+                            <span class="${isLocked ? 'bg-amber-500 text-slate-950' : 'bg-amber-400 text-indigo-950'} text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-wider mb-2 inline-block">
+                                ${isLocked ? 'Verschlossen 🔒' : 'Gemeinsame Aufgabe'}
+                            </span>
                             <h2 class="text-2xl font-extrabold brand-font leading-snug my-1">${currentTask}</h2>
-                            <p class="text-xs text-indigo-200 mt-2">Alle Teilnehmer knipsen heute ein Foto zu dieser Aufgabe!</p>
+                            <p class="text-xs ${isLocked ? 'text-amber-200 font-semibold' : 'text-indigo-200'} mt-2">
+                                ${isLocked ? `Vorfreude ist die schönste Freude! Diese Aufgabe wird am ${releaseDateStr} enthüllt.` : 'Alle Teilnehmer knipsen heute ein Foto zu dieser Aufgabe!'}
+                            </p>
                         </div>
                 `;
 
-                if (this.userType === 'participant') {
+                if (isLocked) {
+                    html += `
+                        <div class="card p-8 text-center bg-amber-50/50 border-amber-200">
+                            <div class="w-16 h-16 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto mb-3 text-2xl shadow-inner">
+                                <i class="fa-solid fa-hourglass-half"></i>
+                            </div>
+                            <h3 class="font-bold text-lg text-amber-900 brand-font">Noch etwas Geduld!</h3>
+                            <p class="text-xs text-amber-800 leading-relaxed max-w-xs mx-auto">
+                                Die Challenge für Tag ${this.selectedTaskIndex + 1} öffnet sich erst am <strong>${releaseDateStr}</strong>. Komme am jeweiligen Tag wieder vorbei, um das Foto hochzuladen!
+                            </p>
+                        </div>
+                    `;
+                } else if (this.userType === 'participant') {
                     if (mySubmission) {
                         html += `
                             <div class="card p-5 text-center bg-emerald-50 border-emerald-200">
@@ -620,7 +714,9 @@
             },
 
             getGalleryHTML: function() {
+                const isLocked = this.isTaskLocked(this.selectedTaskIndex);
                 const currentTaskPhotos = this.photos.filter(p => p.taskIndex === this.selectedTaskIndex);
+                const releaseDateStr = this.getTaskReleaseDateStr(this.selectedTaskIndex);
 
                 let html = `
                     <div class="animate-fade-in space-y-4 pb-6">
@@ -631,7 +727,9 @@
                             </button>
                             <div class="text-center">
                                 <span class="text-xs font-extrabold uppercase tracking-wider text-secondary">Tag ${this.selectedTaskIndex + 1} Galerie</span>
-                                <p class="text-xs text-gray-700 font-bold truncate max-w-[200px]">${tasks[this.selectedTaskIndex]}</p>
+                                <p class="text-xs text-gray-700 font-bold truncate max-w-[200px]">
+                                    ${isLocked ? '🔒 Verschlossen' : tasks[this.selectedTaskIndex]}
+                                </p>
                             </div>
                             <button onclick="appState.changeTaskIndex(1)" ${this.selectedTaskIndex === tasks.length - 1 ? 'disabled class="opacity-30 text-gray-400 px-2 py-1"' : 'class="text-primary font-bold px-3 py-1 hover:bg-gray-100 rounded-lg"'}>
                                 <i class="fa-solid fa-chevron-right"></i>
@@ -639,7 +737,17 @@
                         </div>
                 `;
 
-                if (currentTaskPhotos.length === 0) {
+                if (isLocked) {
+                    html += `
+                        <div class="card p-10 text-center text-amber-800 my-4 bg-amber-50/60 border-amber-200">
+                            <div class="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-3 text-2xl text-amber-600">
+                                <i class="fa-solid fa-lock"></i>
+                            </div>
+                            <h3 class="font-bold text-amber-900 mb-1">Galerie noch gesperrt</h3>
+                            <p class="text-xs text-amber-700">Diese Galerie öffnet sich erst am <strong>${releaseDateStr}</strong> zusammen mit der Tagesaufgabe.</p>
+                        </div>
+                    `;
+                } else if (currentTaskPhotos.length === 0) {
                     html += `
                         <div class="card p-10 text-center text-gray-400 my-4">
                             <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3 text-2xl text-gray-400">
