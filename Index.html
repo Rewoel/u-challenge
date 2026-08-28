@@ -1,0 +1,848 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Urlaubsfoto Challenge</title>
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            font-family: 'Nunito', sans-serif;
+            background-color: #fcf9f2; /* Cream background matching vacation theme */
+            color: #333;
+            background-image: radial-gradient(#ffe082 1.2px, transparent 1.2px);
+            background-size: 32px 32px;
+        }
+        h1, h2, h3, .brand-font {
+            font-family: 'Fredoka', sans-serif;
+        }
+        .text-primary { color: #3b3086; } /* Royal Indigo */
+        .text-secondary { color: #e75a3f; } /* Sunset Coral */
+        .bg-primary { background-color: #3b3086; }
+        .bg-secondary { background-color: #e75a3f; }
+        
+        .card {
+            background: white;
+            border-radius: 1.25rem;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
+            border: 2px solid #f0e6d2;
+        }
+        
+        .star-rating i {
+            cursor: pointer;
+            color: #d1d5db;
+            transition: transform 0.15s ease, color 0.15s ease;
+        }
+        .star-rating i:active {
+            transform: scale(1.25);
+        }
+        .star-rating i.active {
+            color: #fbbf24; /* Gold */
+        }
+        .star-rating i.voted {
+             cursor: default;
+        }
+
+        /* Ambient floating vacation elements */
+        .decoration {
+            position: fixed;
+            z-index: -1;
+            opacity: 0.25;
+            pointer-events: none;
+        }
+        .sun { top: 20px; right: 20px; color: #facc15; font-size: 3.5rem; animation: spin 25s linear infinite; }
+        .camera { bottom: 80px; left: 15px; color: #3b3086; font-size: 2.5rem; transform: rotate(-12deg); }
+        .starfish { top: 180px; left: 10px; color: #e75a3f; font-size: 2rem; transform: rotate(25deg); }
+
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+
+        .modal-overlay {
+            background-color: rgba(15, 23, 42, 0.65);
+            backdrop-filter: blur(4px);
+        }
+
+        /* Custom file dropzone/upload box */
+        .upload-box {
+            border: 2px dashed #3b3086;
+            background-color: #f5f3ff;
+            transition: all 0.2s ease;
+        }
+        .upload-box:hover {
+            background-color: #ede9fe;
+        }
+
+        .pulse-subtle {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: .7; }
+        }
+    </style>
+</head>
+<body class="min-h-screen relative overflow-x-hidden pb-24">
+
+    <i class="fa-solid fa-sun decoration sun"></i>
+    <i class="fa-solid fa-camera decoration camera"></i>
+    <i class="fa-solid fa-star decoration starfish"></i>
+
+    <div id="app" class="max-w-md mx-auto p-4 pt-6">
+        
+        <!-- App Header -->
+        <header class="text-center mb-6">
+            <div class="inline-flex items-center gap-2 bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-xs font-bold mb-2 shadow-sm border border-yellow-200">
+                <i class="fa-solid fa-umbrella-beach"></i> SommerUrlaub 2026
+            </div>
+            <h1 class="text-3xl font-extrabold tracking-tight leading-none mb-1">
+                <span class="text-primary">urlaubsfoto</span>
+                <span class="text-secondary">Challenge</span>
+            </h1>
+            <p id="user-badge" class="text-xs font-semibold text-gray-500 min-h-[1.25rem]"></p>
+        </header>
+
+        <!-- Main Content View Container -->
+        <main id="main-content">
+            <div class="card p-8 text-center my-8">
+                <i class="fa-solid fa-sun fa-spin text-4xl text-primary mb-3"></i>
+                <p class="font-bold text-gray-700">Lade Urlaubschallenge...</p>
+            </div>
+        </main>
+
+        <!-- Bottom Navigation Bar -->
+        <nav id="bottom-nav" class="fixed bottom-0 left-0 w-full bg-white border-t border-gray-200 flex justify-around p-2.5 hidden z-40 shadow-[0_-4px_12px_rgba(0,0,0,0.08)]">
+            <button onclick="appState.navigateTo('today')" class="nav-btn flex flex-col items-center text-primary px-3 py-1 rounded-lg transition-colors" data-target="today">
+                <i class="fa-solid fa-calendar-day text-lg"></i>
+                <span class="text-[11px] font-bold mt-1">Aufgabe</span>
+            </button>
+            <button onclick="appState.navigateTo('gallery')" class="nav-btn flex flex-col items-center text-gray-400 hover:text-primary px-3 py-1 rounded-lg transition-colors" data-target="gallery">
+                <i class="fa-solid fa-images text-lg"></i>
+                <span class="text-[11px] font-bold mt-1">Galerie</span>
+            </button>
+            <button onclick="appState.navigateTo('leaderboard')" class="nav-btn flex flex-col items-center text-gray-400 hover:text-primary px-3 py-1 rounded-lg transition-colors" data-target="leaderboard">
+                <i class="fa-solid fa-trophy text-lg"></i>
+                <span class="text-[11px] font-bold mt-1">Rangliste</span>
+            </button>
+            <button onclick="appState.logout()" class="nav-btn flex flex-col items-center text-gray-400 hover:text-red-500 px-3 py-1 rounded-lg transition-colors">
+                <i class="fa-solid fa-arrow-right-from-bracket text-lg"></i>
+                <span class="text-[11px] font-bold mt-1">Wechseln</span>
+            </button>
+        </nav>
+    </div>
+
+    <div id="alert-modal" class="fixed inset-0 modal-overlay hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl p-6 max-w-sm w-full text-center border-2 border-amber-100 transform transition-all">
+            <div id="alert-icon-container" class="w-12 h-12 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center mx-auto mb-3 text-xl">
+                <i class="fa-solid fa-circle-info"></i>
+            </div>
+            <h3 id="alert-title" class="text-xl font-bold brand-font text-primary mb-2">Hinweis</h3>
+            <p id="alert-message" class="text-sm text-gray-600 mb-6 leading-relaxed">Nachricht...</p>
+            <button onclick="closeAlert()" class="bg-secondary text-white font-bold py-2.5 px-6 rounded-xl hover:bg-opacity-90 w-full transition-all shadow-md active:scale-95">OK</button>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc, collection, query, onSnapshot, addDoc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Configuration & Keys
+        const IMGBB_API_KEY = "e0e4ba75ce52f0439f6620c101f14e58";
+
+        // Determine App ID & Firebase Config
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'fotochallenge-b30aa';
+        const firebaseConfig = (typeof __firebase_config !== 'undefined' && JSON.parse(__firebase_config).apiKey) 
+            ? JSON.parse(__firebase_config) 
+            : {
+                apiKey: "AIzaSyCki_Y3pK2nm19LkqSN6oVXw0Kyhn9bmlE",
+                authDomain: "fotochallenge-b30aa.firebaseapp.com",
+                projectId: "fotochallenge-b30aa",
+                storageBucket: "fotochallenge-b30aa.firebasestorage.app",
+                messagingSenderId: "208057534460",
+                appId: "1:208057534460:web:077fc6106f352bc6af9479",
+                measurementId: "G-4PN0EGTFMF"
+            };
+
+        let app, db, auth;
+        let unsubscribePhotos = null;
+
+        // Participants and Family List
+        const participants = ["Michelle", "Florian", "Felix", "Julian"];
+        const familyMembers = ["Mama", "Papa", "Oma", "Opa"];
+        
+        // 14 Vacation Daily Photo Challenge Tasks
+        const tasks = [
+            "Das leckerste Urlaubseis 🍦",
+            "Der lustigste Schatten 👤",
+            "Ein Tier im Urlaub 🦀",
+            "Der schönste Sonnenuntergang 🌅",
+            "Ein lokales Straßenschild / Ortsschild 🛑",
+            "Der höchste Sandburg-Turm / Steinmännchen 🏰",
+            "Ein Spiegelbild im Wasser 💧",
+            "Etwas, das typisch für diesen Ort ist 📍",
+            "Ein lustiges Gesicht aus Dingen gelegt 😜",
+            "Der spektakulärste Sprung ins Wasser 💦",
+            "Das beste Urlaubs-Outfit 🕶️",
+            "Eine versteckte Muschel oder ein besonderer Stein 🐚",
+            "Das bunteste Urlaubs-Getränk 🍹",
+            "Ein lustiges Gruppen-Selfie 📸"
+        ];
+
+        window.appState = {
+            currentUser: null,
+            userType: null, // 'participant' or 'family'
+            userName: null,
+            currentView: 'login', // login, today, gallery, leaderboard
+            selectedTaskIndex: 0, // Default task day index
+            photos: [],
+            
+            init: async function() {
+                try {
+                    app = initializeApp(firebaseConfig);
+                    db = getFirestore(app);
+                    auth = getAuth(app);
+
+                    // Sign in flow (Custom token or Anonymous)
+                    const token = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+                    if (token) {
+                        await signInWithCustomToken(auth, token);
+                    } else {
+                        await signInAnonymously(auth);
+                    }
+
+                    onAuthStateChanged(auth, async (user) => {
+                        if (user) {
+                            this.currentUser = user;
+                            this.listenToPhotos();
+                            this.checkSavedSession();
+                        } else {
+                            this.renderView('login');
+                        }
+                    });
+                } catch (error) {
+                    console.error("Firebase Initialization Error:", error);
+                    showAlert("Verbindungsfehler", "Konnte keine Verbindung zur Datenbank herstellen.");
+                    this.renderView('login');
+                }
+            },
+
+            listenToPhotos: function() {
+                if (!this.currentUser || unsubscribePhotos) return;
+                
+                // Use strict path rule
+                const photosRef = collection(db, 'artifacts', appId, 'public', 'data', 'photos');
+                const q = query(photosRef);
+
+                unsubscribePhotos = onSnapshot(q, (snapshot) => {
+                    this.photos = [];
+                    snapshot.forEach((doc) => {
+                        this.photos.push({ id: doc.id, ...doc.data() });
+                    });
+                    
+                    // Re-render current view when Firestore updates
+                    if (this.currentView !== 'login') {
+                        this.renderView(this.currentView);
+                    }
+                }, (error) => {
+                    console.error("Firestore photo listener error:", error);
+                });
+            },
+
+            checkSavedSession: function() {
+                const savedName = localStorage.getItem('vacation_user_name');
+                const savedType = localStorage.getItem('vacation_user_type');
+                
+                if (savedName && savedType) {
+                    this.userName = savedName;
+                    this.userType = savedType;
+                    this.updateUserBadge();
+                    this.navigateTo('today');
+                } else {
+                    this.renderView('login');
+                }
+            },
+
+            loginAs: function(name, type) {
+                this.userName = name;
+                this.userType = type;
+                localStorage.setItem('vacation_user_name', name);
+                localStorage.setItem('vacation_user_type', type);
+                this.updateUserBadge();
+                this.navigateTo('today');
+            },
+
+            logout: function() {
+                localStorage.removeItem('vacation_user_name');
+                localStorage.removeItem('vacation_user_type');
+                this.userName = null;
+                this.userType = null;
+                this.updateUserBadge();
+                this.navigateTo('login');
+            },
+
+            updateUserBadge: function() {
+                const badge = document.getElementById('user-badge');
+                if (this.userName) {
+                    const roleTag = this.userType === 'participant' ? 'Teilnehmer' : 'Jury';
+                    badge.innerHTML = `<span class="bg-indigo-50 text-primary px-2.5 py-0.5 rounded-full font-bold">Angemeldet als <strong>${this.userName}</strong> (${roleTag})</span>`;
+                } else {
+                    badge.innerHTML = '';
+                }
+            },
+
+            navigateTo: function(view) {
+                this.currentView = view;
+                
+                const nav = document.getElementById('bottom-nav');
+                if (view !== 'login') {
+                    nav.classList.remove('hidden');
+                    document.querySelectorAll('.nav-btn').forEach(btn => {
+                        if (btn.dataset.target === view) {
+                            btn.classList.add('text-primary', 'bg-indigo-50');
+                            btn.classList.remove('text-gray-400');
+                        } else if (btn.dataset.target) {
+                            btn.classList.remove('text-primary', 'bg-indigo-50');
+                            btn.classList.add('text-gray-400');
+                        }
+                    });
+                } else {
+                    nav.classList.add('hidden');
+                }
+
+                this.renderView(view);
+            },
+
+            renderView: function(view) {
+                const main = document.getElementById('main-content');
+                main.innerHTML = '';
+
+                switch(view) {
+                    case 'login':
+                        main.innerHTML = this.getLoginHTML();
+                        break;
+                    case 'today':
+                        main.innerHTML = this.getTodayHTML();
+                        if (this.userType === 'participant') {
+                            this.setupUploadListeners();
+                        }
+                        break;
+                    case 'gallery':
+                        main.innerHTML = this.getGalleryHTML();
+                        break;
+                    case 'leaderboard':
+                        main.innerHTML = this.getLeaderboardHTML();
+                        break;
+                }
+            },
+
+            getLoginHTML: function() {
+                let html = `
+                    <div class="card p-6 text-center animate-fade-in shadow-xl">
+                        <div class="w-14 h-14 bg-indigo-100 text-primary rounded-2xl flex items-center justify-center mx-auto mb-3 text-2xl">
+                            <i class="fa-solid fa-user-check"></i>
+                        </div>
+                        <h2 class="text-2xl font-bold mb-1 brand-font text-primary">Wer bist du?</h2>
+                        <p class="mb-6 text-xs text-gray-500 font-medium">Wähle dein Profil aus, um loszulegen.</p>
+                        
+                        <div class="mb-6 text-left">
+                            <div class="flex items-center gap-2 mb-3">
+                                <span class="bg-indigo-100 text-primary text-xs font-bold px-2.5 py-0.5 rounded-md uppercase">Fotografen</span>
+                                <span class="text-xs text-gray-400">(Fotos hochladen)</span>
+                            </div>
+                            <div class="grid grid-cols-2 gap-2.5">
+                `;
+                
+                participants.forEach(p => {
+                    html += `
+                        <button onclick="appState.loginAs('${p}', 'participant')" class="bg-indigo-50 hover:bg-indigo-100 text-primary font-bold py-3 px-3 rounded-xl border border-indigo-100 transition-all active:scale-95 text-sm flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-camera-retro opacity-70"></i> ${p}
+                        </button>
+                    `;
+                });
+
+                html += `
+                            </div>
+                        </div>
+
+                        <div class="text-left">
+                            <div class="flex items-center gap-2 mb-3">
+                                <span class="bg-orange-100 text-secondary text-xs font-bold px-2.5 py-0.5 rounded-md uppercase">Jury / Familie</span>
+                                <span class="text-xs text-gray-400">(Sterne verteilen)</span>
+                            </div>
+                            <div class="grid grid-cols-2 gap-2.5">
+                `;
+
+                familyMembers.forEach(f => {
+                    html += `
+                        <button onclick="appState.loginAs('${f}', 'family')" class="bg-orange-50 hover:bg-orange-100 text-secondary font-bold py-3 px-3 rounded-xl border border-orange-100 transition-all active:scale-95 text-sm flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-star opacity-70"></i> ${f}
+                        </button>
+                    `;
+                });
+                
+                html += `
+                            </div>
+                            <button onclick="promptCustomFamily()" class="w-full mt-2.5 bg-gray-50 hover:bg-gray-100 text-gray-700 font-bold py-2.5 px-3 rounded-xl border border-gray-200 transition-all text-xs text-center flex items-center justify-center gap-2">
+                                <i class="fa-solid fa-user-plus text-gray-400"></i> Anderer Name...
+                            </button>
+                        </div>
+                    </div>
+                `;
+                return html;
+            },
+
+            getTodayHTML: function() {
+                const currentTask = tasks[this.selectedTaskIndex];
+                
+                // Check if user already submitted for this specific task index
+                const mySubmission = this.photos.find(p => p.taskIndex === this.selectedTaskIndex && p.userName === this.userName);
+
+                let html = `
+                    <div class="animate-fade-in space-y-4">
+                        
+                        <!-- Day / Task Selector Bar -->
+                        <div class="flex items-center justify-between bg-white p-3 rounded-2xl shadow-sm border border-amber-100">
+                            <button onclick="appState.changeTaskIndex(-1)" ${this.selectedTaskIndex === 0 ? 'disabled class="opacity-30 text-gray-400 px-2 py-1"' : 'class="text-primary font-bold px-3 py-1 hover:bg-gray-100 rounded-lg"'}>
+                                <i class="fa-solid fa-chevron-left"></i>
+                            </button>
+                            <div class="text-center">
+                                <span class="text-xs font-extrabold uppercase tracking-wider text-secondary">Tag ${this.selectedTaskIndex + 1} von ${tasks.length}</span>
+                                <p class="text-xs text-gray-500 font-semibold">Tagesaufgabe</p>
+                            </div>
+                            <button onclick="appState.changeTaskIndex(1)" ${this.selectedTaskIndex === tasks.length - 1 ? 'disabled class="opacity-30 text-gray-400 px-2 py-1"' : 'class="text-primary font-bold px-3 py-1 hover:bg-gray-100 rounded-lg"'}>
+                                <i class="fa-solid fa-chevron-right"></i>
+                            </button>
+                        </div>
+
+                        <!-- Task Banner -->
+                        <div class="bg-gradient-to-br from-indigo-900 to-indigo-800 text-white p-6 rounded-2xl shadow-lg relative overflow-hidden text-center">
+                            <div class="absolute -right-4 -bottom-4 opacity-10 text-white text-8xl pointer-events-none">
+                                <i class="fa-solid fa-camera"></i>
+                            </div>
+                            <span class="bg-amber-400 text-indigo-950 text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-wider mb-2 inline-block">Gemeinsame Aufgabe</span>
+                            <h2 class="text-2xl font-extrabold brand-font leading-snug my-1">${currentTask}</h2>
+                            <p class="text-xs text-indigo-200 mt-2">Alle Teilnehmer knipsen heute ein Foto zu dieser Aufgabe!</p>
+                        </div>
+                `;
+
+                if (this.userType === 'participant') {
+                    if (mySubmission) {
+                        html += `
+                            <div class="card p-5 text-center bg-emerald-50 border-emerald-200">
+                                <div class="w-14 h-14 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-3 text-2xl shadow-inner">
+                                    <i class="fa-solid fa-circle-check"></i>
+                                </div>
+                                <h3 class="font-bold text-lg text-emerald-900 brand-font">Foto eingereicht!</h3>
+                                <p class="text-xs text-emerald-700 mb-4">Klasse, ${this.userName}! Dein Bild für Tag ${this.selectedTaskIndex + 1} ist gespeichert.</p>
+                                
+                                <div class="rounded-xl overflow-hidden mb-4 border-2 border-emerald-200 shadow-md max-h-56 bg-black">
+                                    <img src="${mySubmission.imageUrl}" class="w-full h-56 object-cover" alt="Dein Foto">
+                                </div>
+
+                                <button onclick="appState.navigateTo('gallery')" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 px-4 rounded-xl text-sm transition-all shadow-md">
+                                    <i class="fa-solid fa-images mr-1"></i> Galerie & Sterne ansehen
+                                </button>
+                            </div>
+                        `;
+                    } else {
+                        html += `
+                            <div class="card p-5">
+                                <h3 class="font-bold text-base brand-font text-gray-800 mb-1">Dein Foto hochladen</h3>
+                                <p class="text-xs text-gray-500 mb-4">Nimm ein Foto mit der Kamera auf oder wähle eins aus der Galerie.</p>
+
+                                <form id="upload-form" onsubmit="return false;">
+                                    <!-- Hidden native file input -->
+                                    <input type="file" id="file-input" accept="image/*" class="hidden">
+                                    
+                                    <!-- Interactive Upload Box -->
+                                    <div id="dropzone" onclick="document.getElementById('file-input').click()" class="upload-box p-6 rounded-2xl text-center cursor-pointer mb-4">
+                                        <div id="upload-prompt">
+                                            <div class="w-12 h-12 bg-indigo-100 text-primary rounded-full flex items-center justify-center mx-auto mb-2 text-xl">
+                                                <i class="fa-solid fa-cloud-arrow-up"></i>
+                                            </div>
+                                            <p class="font-bold text-sm text-primary mb-0.5">Kamera öffnen / Bild wählen</p>
+                                            <p class="text-[11px] text-gray-400">Tippe hier, um ein Foto hochzuladen</p>
+                                        </div>
+
+                                        <!-- Preview section -->
+                                        <div id="preview-container" class="hidden relative">
+                                            <img id="image-preview" src="" class="w-full h-48 object-cover rounded-xl shadow-md border">
+                                            <button type="button" onclick="event.stopPropagation(); window.clearFileSelection();" class="absolute top-2 right-2 bg-red-500 text-white rounded-full w-7 h-7 flex items-center justify-center shadow-lg hover:bg-red-600">
+                                                <i class="fa-solid fa-xmark text-xs"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <!-- Upload Status Bar -->
+                                    <div id="upload-progress" class="hidden mb-4 bg-indigo-50 border border-indigo-100 p-3 rounded-xl text-center">
+                                        <i class="fa-solid fa-spinner fa-spin text-primary text-lg mb-1"></i>
+                                        <p class="text-xs font-bold text-primary">Foto wird zu ImgBB hochgeladen...</p>
+                                        <p class="text-[10px] text-gray-500">Bitte einen kurzen Moment gedulden</p>
+                                    </div>
+
+                                    <button id="submit-btn" type="button" disabled class="w-full bg-primary text-white font-bold py-3 px-4 rounded-xl opacity-40 cursor-not-allowed transition-all shadow-md text-sm">
+                                        <i class="fa-solid fa-paper-plane mr-2"></i> Foto absenden
+                                    </button>
+                                </form>
+                            </div>
+                        `;
+                    }
+                } else {
+                    html += `
+                        <div class="card p-6 text-center">
+                            <div class="w-12 h-12 bg-orange-100 text-secondary rounded-full flex items-center justify-center mx-auto mb-3 text-xl">
+                                <i class="fa-solid fa-award"></i>
+                            </div>
+                            <h3 class="font-bold text-lg brand-font mb-1 text-gray-800">Hallo Jury-Mitglied ${this.userName}!</h3>
+                            <p class="text-xs text-gray-600 mb-5 leading-relaxed">Du kannst die eingereichten Urlaubsfotos aller Teilnehmer in der Galerie bewerten!</p>
+                            <button onclick="appState.navigateTo('gallery')" class="w-full bg-secondary text-white font-bold py-3 px-6 rounded-xl shadow-md hover:bg-opacity-95 transition-all text-sm">
+                                <i class="fa-solid fa-images mr-1.5"></i> Jetzt in der Galerie abstimmen
+                            </button>
+                        </div>
+                    `;
+                }
+                
+                html += `</div>`;
+                return html;
+            },
+
+            changeTaskIndex: function(delta) {
+                const newIndex = this.selectedTaskIndex + delta;
+                if (newIndex >= 0 && newIndex < tasks.length) {
+                    this.selectedTaskIndex = newIndex;
+                    this.renderView(this.currentView);
+                }
+            },
+
+            setupUploadListeners: function() {
+                const fileInput = document.getElementById('file-input');
+                const previewContainer = document.getElementById('preview-container');
+                const uploadPrompt = document.getElementById('upload-prompt');
+                const previewImg = document.getElementById('image-preview');
+                const submitBtn = document.getElementById('submit-btn');
+                let selectedFile = null;
+
+                window.clearFileSelection = () => {
+                    selectedFile = null;
+                    if (fileInput) fileInput.value = '';
+                    if (previewContainer) previewContainer.classList.add('hidden');
+                    if (uploadPrompt) uploadPrompt.classList.remove('hidden');
+                    if (submitBtn) {
+                        submitBtn.disabled = true;
+                        submitBtn.classList.add('opacity-40', 'cursor-not-allowed');
+                    }
+                };
+
+                fileInput?.addEventListener('change', (e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                        if (!file.type.startsWith('image/')) {
+                            showAlert('Ungültige Datei', 'Bitte wähle eine Bilddatei aus.');
+                            return;
+                        }
+
+                        selectedFile = file;
+                        const reader = new FileReader();
+                        reader.onload = (event) => {
+                            previewImg.src = event.target.result;
+                            uploadPrompt.classList.add('hidden');
+                            previewContainer.classList.remove('hidden');
+                            submitBtn.disabled = false;
+                            submitBtn.classList.remove('opacity-40', 'cursor-not-allowed');
+                        };
+                        reader.readAsDataURL(file);
+                    }
+                });
+
+                submitBtn?.addEventListener('click', async () => {
+                    if (!selectedFile || submitBtn.disabled) return;
+                    if (!this.currentUser) {
+                        showAlert("Fehler", "Nicht angemeldet.");
+                        return;
+                    }
+
+                    const progressDiv = document.getElementById('upload-progress');
+                    progressDiv?.classList.remove('hidden');
+                    submitBtn.disabled = true;
+                    submitBtn.classList.add('opacity-40');
+
+                    try {
+                        // 1. Upload file directly to ImgBB via API key
+                        const formData = new FormData();
+                        formData.append("image", selectedFile);
+
+                        const imgbbResponse = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, {
+                            method: "POST",
+                            body: formData
+                        });
+
+                        const imgbbData = await imgbbResponse.json();
+
+                        if (!imgbbData.success) {
+                            throw new Error(imgbbData.error?.message || "Fehler beim Bild-Upload");
+                        }
+
+                        const imageUrl = imgbbData.data.url;
+
+                        // 2. Save metadata & image URL into Firebase Firestore
+                        const newPhoto = {
+                            userId: this.currentUser.uid,
+                            userName: this.userName,
+                            taskIndex: this.selectedTaskIndex,
+                            taskText: tasks[this.selectedTaskIndex],
+                            imageUrl: imageUrl,
+                            timestamp: serverTimestamp(),
+                            ratings: {}, // Map voterName -> rating (1-5)
+                            totalScore: 0,
+                            voteCount: 0
+                        };
+
+                        const photosRef = collection(db, 'artifacts', appId, 'public', 'data', 'photos');
+                        await addDoc(photosRef, newPhoto);
+                        
+                        showAlert("Erfolg! 🎉", "Dein Urlaubsfoto wurde erfolgreich eingereicht!");
+                        this.renderView('today');
+
+                    } catch (error) {
+                        console.error("Upload process error:", error);
+                        showAlert("Upload fehlgeschlagen", "Fehler: " + error.message);
+                        progressDiv?.classList.add('hidden');
+                        submitBtn.disabled = false;
+                        submitBtn.classList.remove('opacity-40');
+                    }
+                });
+            },
+
+            getGalleryHTML: function() {
+                const currentTaskPhotos = this.photos.filter(p => p.taskIndex === this.selectedTaskIndex);
+
+                let html = `
+                    <div class="animate-fade-in space-y-4 pb-6">
+                        <!-- Task Header & Navigation -->
+                        <div class="flex items-center justify-between bg-white p-3 rounded-2xl shadow-sm border border-amber-100">
+                            <button onclick="appState.changeTaskIndex(-1)" ${this.selectedTaskIndex === 0 ? 'disabled class="opacity-30 text-gray-400 px-2 py-1"' : 'class="text-primary font-bold px-3 py-1 hover:bg-gray-100 rounded-lg"'}>
+                                <i class="fa-solid fa-chevron-left"></i>
+                            </button>
+                            <div class="text-center">
+                                <span class="text-xs font-extrabold uppercase tracking-wider text-secondary">Tag ${this.selectedTaskIndex + 1} Galerie</span>
+                                <p class="text-xs text-gray-700 font-bold truncate max-w-[200px]">${tasks[this.selectedTaskIndex]}</p>
+                            </div>
+                            <button onclick="appState.changeTaskIndex(1)" ${this.selectedTaskIndex === tasks.length - 1 ? 'disabled class="opacity-30 text-gray-400 px-2 py-1"' : 'class="text-primary font-bold px-3 py-1 hover:bg-gray-100 rounded-lg"'}>
+                                <i class="fa-solid fa-chevron-right"></i>
+                            </button>
+                        </div>
+                `;
+
+                if (currentTaskPhotos.length === 0) {
+                    html += `
+                        <div class="card p-10 text-center text-gray-400 my-4">
+                            <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3 text-2xl text-gray-400">
+                                <i class="fa-regular fa-image"></i>
+                            </div>
+                            <h3 class="font-bold text-gray-600 mb-1">Noch keine Fotos</h3>
+                            <p class="text-xs">Für Tag ${this.selectedTaskIndex + 1} wurden noch keine Fotos hochgeladen.</p>
+                        </div>
+                    `;
+                } else {
+                    html += `<div class="space-y-5">`;
+                    
+                    currentTaskPhotos.forEach(photo => {
+                        const myRating = (photo.ratings && photo.ratings[this.userName]) ? photo.ratings[this.userName] : 0;
+                        const hasVoted = myRating > 0;
+                        const avgRating = photo.voteCount > 0 ? (photo.totalScore / photo.voteCount).toFixed(1) : "0.0";
+
+                        html += `
+                            <div class="card overflow-hidden shadow-lg border border-gray-100">
+                                <!-- Photo Header -->
+                                <div class="p-3.5 bg-gray-50 flex items-center justify-between border-b border-gray-100">
+                                    <div class="flex items-center gap-2">
+                                        <div class="w-8 h-8 rounded-full bg-indigo-100 text-primary font-bold text-xs flex items-center justify-center shadow-sm">
+                                            ${photo.userName.charAt(0)}
+                                        </div>
+                                        <span class="font-extrabold text-sm text-gray-800">${photo.userName}</span>
+                                    </div>
+                                    <div class="bg-amber-100 text-amber-800 text-xs font-extrabold px-2.5 py-1 rounded-full flex items-center gap-1 shadow-sm">
+                                        <i class="fa-solid fa-star text-amber-500"></i> ${avgRating} <span class="text-[10px] text-amber-700 font-medium">(${photo.voteCount || 0})</span>
+                                    </div>
+                                </div>
+
+                                <!-- Photo Image -->
+                                <div class="bg-black relative max-h-80 flex items-center justify-center overflow-hidden">
+                                    <img src="${photo.imageUrl}" alt="Foto von ${photo.userName}" class="w-full object-contain max-h-80" loading="lazy">
+                                </div>
+
+                                <!-- Voting / Rating Section -->
+                                <div class="p-4 bg-white text-center">
+                                    <p class="text-xs font-semibold text-gray-500 mb-2">
+                                        ${hasVoted ? 'Deine Bewertung:' : 'Mit Sternen bewerten (1 - 5):'}
+                                    </p>
+                                    
+                                    <div class="flex justify-center gap-3 star-rating py-1" id="star-container-${photo.id}">
+                        `;
+
+                        for (let i = 1; i <= 5; i++) {
+                            const isFilled = i <= myRating;
+                            const activeClass = isFilled ? 'active' : '';
+                            const votedClass = hasVoted ? 'voted' : '';
+                            const clickAction = !hasVoted ? `onclick="appState.submitRating('${photo.id}', ${i})"` : '';
+                            
+                            html += `
+                                <i class="fa-solid fa-star text-3xl ${activeClass} ${votedClass}" ${clickAction} data-val="${i}"></i>
+                            `;
+                        }
+
+                        html += `
+                                    </div>
+                                    ${hasVoted ? `<p class="text-xs font-bold text-emerald-600 mt-2"><i class="fa-solid fa-check-circle mr-1"></i> Abgestimmt (${myRating} Sterne)</p>` : ''}
+                                </div>
+                            </div>
+                        `;
+                    });
+
+                    html += `</div>`;
+                }
+
+                html += `</div>`;
+                return html;
+            },
+
+            submitRating: async function(photoId, score) {
+                if (!this.currentUser) return;
+                
+                try {
+                    const photoRef = doc(db, 'artifacts', appId, 'public', 'data', 'photos', photoId);
+                    const photo = this.photos.find(p => p.id === photoId);
+                    
+                    if (!photo) return;
+                    if (photo.ratings && photo.ratings[this.userName]) return; // Already voted
+
+                    let newRatings = photo.ratings || {};
+                    newRatings[this.userName] = score;
+
+                    let newTotalScore = (photo.totalScore || 0) + score;
+                    let newVoteCount = (photo.voteCount || 0) + 1;
+
+                    await updateDoc(photoRef, {
+                        ratings: newRatings,
+                        totalScore: newTotalScore,
+                        voteCount: newVoteCount
+                    });
+
+                } catch (error) {
+                    console.error("Error saving rating:", error);
+                    showAlert("Fehler", "Bewertung konnte nicht gespeichert werden.");
+                }
+            },
+
+            getLeaderboardHTML: function() {
+                // Initialize scores for standard participants
+                let scores = {};
+                participants.forEach(p => {
+                    scores[p] = { name: p, totalStars: 0, photosCount: 0 };
+                });
+
+                // Sum stars across all uploaded photos
+                this.photos.forEach(photo => {
+                    if (scores[photo.userName]) {
+                        scores[photo.userName].photosCount += 1;
+                        scores[photo.userName].totalStars += (photo.totalScore || 0);
+                    }
+                });
+
+                // Sort descending by total stars
+                let leaderboard = Object.values(scores).sort((a, b) => b.totalStars - a.totalStars);
+
+                let html = `
+                    <div class="animate-fade-in space-y-4 pb-6">
+                        <div class="text-center pt-2 pb-1">
+                            <div class="inline-flex items-center justify-center w-12 h-12 bg-amber-100 text-amber-500 rounded-full text-2xl mb-2 shadow-sm">
+                                <i class="fa-solid fa-trophy"></i>
+                            </div>
+                            <h2 class="text-2xl font-bold brand-font text-gray-800">Gesamt-Rangliste</h2>
+                            <p class="text-xs text-gray-500 font-medium">Wer hat im Urlaub die meisten Sterne gesammelt?</p>
+                        </div>
+
+                        <div class="bg-white rounded-2xl shadow-lg border border-amber-100 overflow-hidden">
+                `;
+
+                leaderboard.forEach((entry, index) => {
+                    let badge = '';
+                    let rowBg = 'bg-white';
+                    let nameColor = 'text-gray-800';
+
+                    if (index === 0) {
+                        badge = '🥇';
+                        rowBg = 'bg-amber-50/80';
+                        nameColor = 'text-amber-900 font-extrabold';
+                    } else if (index === 1) {
+                        badge = '🥈';
+                        rowBg = 'bg-slate-50';
+                        nameColor = 'text-slate-800 font-bold';
+                    } else if (index === 2) {
+                        badge = '🥉';
+                        rowBg = 'bg-orange-50/50';
+                        nameColor = 'text-orange-950 font-bold';
+                    } else {
+                        badge = `<span class="text-xs font-bold text-gray-400 w-6 inline-block">${index + 1}.</span>`;
+                    }
+
+                    html += `
+                        <div class="flex items-center justify-between p-4 border-b border-gray-100 ${rowBg} last:border-b-0">
+                            <div class="flex items-center gap-3">
+                                <div class="text-2xl w-7 text-center">${badge}</div>
+                                <div>
+                                    <h4 class="text-base ${nameColor}">${entry.name}</h4>
+                                    <p class="text-[11px] text-gray-400 font-medium">${entry.photosCount} ${entry.photosCount === 1 ? 'Foto' : 'Fotos'} eingereicht</p>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <div class="text-xl font-extrabold text-primary flex items-center justify-end gap-1">
+                                    ${entry.totalStars} <i class="fa-solid fa-star text-amber-400 text-sm"></i>
+                                </div>
+                                <span class="text-[10px] text-gray-400 uppercase tracking-wider font-bold">Gesamt-Sterne</span>
+                            </div>
+                        </div>
+                    `;
+                });
+
+                html += `
+                        </div>
+                        <p class="text-center text-[11px] text-gray-400 font-medium px-4">
+                            Tipp: Sterne werden automatisch aus den Jury-Bewertungen in Firestore zusammengerechnet.
+                        </p>
+                    </div>
+                `;
+
+                return html;
+            }
+        };
+
+        window.promptCustomFamily = () => {
+            const name = prompt("Bitte gib deinen Namen für die Jury ein:");
+            if (name && name.trim().length > 0) {
+                appState.loginAs(name.trim(), 'family');
+            }
+        };
+
+        window.showAlert = (title, message) => {
+            document.getElementById('alert-title').innerText = title;
+            document.getElementById('alert-message').innerText = message;
+            document.getElementById('alert-modal').classList.remove('hidden');
+        };
+
+        window.closeAlert = () => {
+            document.getElementById('alert-modal').classList.add('hidden');
+        };
+
+        // Initialize application on DOM ready
+        document.addEventListener('DOMContentLoaded', () => {
+            appState.init();
+        });
+    </script>
+</body>
+</html>
