@@ -742,6 +742,7 @@
                             taskIndex: this.selectedTaskIndex,
                             taskText: tasks[this.selectedTaskIndex],
                             imageUrl: imageUrl,
+                            edited: false,
                             timestamp: serverTimestamp(),
                             ratings: {}, // Map voterName -> rating (1-5)
                             totalScore: 0,
@@ -815,6 +816,7 @@
                         const myRating = (photo.ratings && photo.ratings[this.userName]) ? photo.ratings[this.userName] : 0;
                         const hasVoted = myRating > 0;
                         const avgRating = photo.voteCount > 0 ? (photo.totalScore / photo.voteCount).toFixed(1) : "0.0";
+                        const isEdited = photo.edited === true;
 
                         html += `
                             <div class="card overflow-hidden shadow-lg border border-gray-100">
@@ -826,8 +828,11 @@
                                         </div>
                                         <span class="font-extrabold text-sm text-gray-800">${photo.userName}</span>
                                     </div>
-                                    <div class="bg-amber-100 text-amber-800 text-xs font-extrabold px-2.5 py-1 rounded-full flex items-center gap-1 shadow-sm">
-                                        <i class="fa-solid fa-star text-amber-500"></i> ${avgRating} <span class="text-[10px] text-amber-700 font-medium">(${photo.voteCount || 0})</span>
+                                    <div class="flex items-center gap-1.5">
+                                        ${isEdited ? `<span class="bg-purple-100 text-purple-700 text-[10px] font-black px-2 py-0.5 rounded-full border border-purple-200 shadow-xs flex items-center gap-1"><i class="fa-solid fa-pen-to-square"></i> Bearbeitet</span>` : ''}
+                                        <div class="bg-amber-100 text-amber-800 text-xs font-extrabold px-2.5 py-1 rounded-full flex items-center gap-1 shadow-sm">
+                                            <i class="fa-solid fa-star text-amber-500"></i> ${avgRating} <span class="text-[10px] text-amber-700 font-medium">(${photo.voteCount || 0})</span>
+                                        </div>
                                     </div>
                                 </div>
 
@@ -1017,7 +1022,7 @@
                 html += `
                         </div>
                         <p class="text-center text-[11px] text-gray-400 font-medium px-4">
-                            
+                            Tipp: Sterne werden automatisch aus den Jury-Bewertungen in Firestore zusammengerechnet.
                         </p>
                     </div>
                 `;
